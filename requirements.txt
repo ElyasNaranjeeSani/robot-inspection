@@ -1,4 +1,3 @@
-cat > requirements.txt << 'EOF'
 fastapi
 uvicorn
 python-multipart
@@ -11,4 +10,3 @@ lightning
 timm
 huggingface_hub
 numpy
-EOF
