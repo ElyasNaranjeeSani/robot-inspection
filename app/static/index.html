@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Inspection Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0A0D12;
+            color: #E8EDF5;
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #8896A8;
+            font-size: 15px;
+            margin-bottom: 48px;
+        }
+
+        .upload-area {
+            width: 100%;
+            max-width: 480px;
+            border: 2px dashed #2A3240;
+            border-radius: 16px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            margin-bottom: 24px;
+        }
+
+        .upload-area:hover { border-color: #4A5568; }
+        .upload-area.dragover { border-color: #22C55E; }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            color: #8896A8;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .upload-text span {
+            color: #22C55E;
+            cursor: pointer;
+        }
+
+        #file-input { display: none; }
+
+        .preview-container {
+            width: 100%;
+            max-width: 480px;
+            display: none;
+            margin-bottom: 24px;
+        }
+
+        .preview-container img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid #2A3240;
+        }
+
+        .inspect-btn {
+            background: #22C55E;
+            color: #0A0D12;
+            border: none;
+            padding: 14px 48px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            transition: opacity 0.2s;
+            margin-bottom: 32px;
+        }
+
+        .inspect-btn:hover { opacity: 0.9; }
+        .inspect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .result-card {
+            width: 100%;
+            max-width: 480px;
+            background: #181D26;
+            border-radius: 16px;
+            padding: 24px;
+            display: none;
+            border: 1px solid #2A3240;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .result-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-defective {
+            background: rgba(239, 68, 68, 0.15);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-good {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22C55E;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .result-score {
+            font-size: 13px;
+            color: #8896A8;
+        }
+
+        .score-bar-container {
+            margin-bottom: 20px;
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #8896A8;
+            margin-bottom: 8px;
+        }
+
+        .score-bar {
+            height: 6px;
+            background: #2A3240;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+
+        .fill-defective { background: #EF4444; }
+        .fill-good { background: #22C55E; }
+
+        .threshold-marker {
+            position: relative;
+            height: 12px;
+            margin-top: 4px;
+        }
+
+        .threshold-line {
+            position: absolute;
+            width: 2px;
+            height: 12px;
+            background: #8896A8;
+            transform: translateX(-50%);
+        }
+
+        .threshold-label {
+            position: absolute;
+            font-size: 10px;
+            color: #8896A8;
+            transform: translateX(-50%);
+            top: 14px;
+            white-space: nowrap;
+        }
+
+        .heatmap-section h3 {
+            font-size: 13px;
+            color: #8896A8;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .heatmap-section img {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid #2A3240;
+        }
+
+        .loading {
+            display: none;
+            color: #8896A8;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .reset-btn {
+            background: none;
+            border: 1px solid #2A3240;
+            color: #8896A8;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .reset-btn:hover { border-color: #4A5568; }
+    </style>
+</head>
+<body>
+    <h1>Robot Inspection Demo</h1>
+    <p class="subtitle">AI-powered manufacturing defect detection</p>
+
+    <div class="upload-area" id="upload-area">
+        <div class="upload-icon">🔍</div>
+        <div class="upload-text">
+            Drag and drop a part image here<br>
+            or <span onclick="event.stopPropagation(); document.getElementById('file-input').click()">browse to upload</span>
+        </div>
+        <input type="file" id="file-input" accept="image/*">
+    </div>
+
+    <div class="preview-container" id="preview-container">
+        <img id="preview-img" src="" alt="Preview">
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-bottom: 32px;">
+        <button class="inspect-btn" id="inspect-btn" style="margin-bottom: 0;">Inspect Part</button>
+        <button class="reset-btn" id="reset-btn" onclick="reset()" style="display: none;">↩ Try Another</button>
+    </div>
+
+    <div class="loading" id="loading">Analysing image...</div>
+
+    <div class="result-card" id="result-card">
+        <div class="result-header">
+            <span class="result-badge" id="result-badge"></span>
+            <span class="result-score" id="result-score"></span>
+        </div>
+
+        <div class="score-bar-container">
+            <div class="score-label">
+                <span>Anomaly Score</span>
+                <span id="score-value"></span>
+            </div>
+            <div class="score-bar">
+                <div class="score-fill" id="score-fill"></div>
+            </div>
+            <div class="threshold-marker">
+                <div class="threshold-line" id="threshold-line"></div>
+                <span class="threshold-label" id="threshold-label">Threshold</span>
+            </div>
+        </div>
+
+        <div class="heatmap-section">
+            <h3>Anomaly Heatmap</h3>
+            <img id="heatmap-img" src="" alt="Heatmap">
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview-img');
+        const inspectBtn = document.getElementById('inspect-btn');
+        const loading = document.getElementById('loading');
+        const resultCard = document.getElementById('result-card');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+
+        uploadArea.addEventListener('click', (e) => {
+          if (e.target !== document.querySelector('.upload-text span')) {
+            fileInput.click();}
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewContainer.style.display = 'block';
+                inspectBtn.style.display = 'block';
+                uploadArea.style.display = 'none';
+                resultCard.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        inspectBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            inspectBtn.disabled = true;
+            loading.style.display = 'block';
+            resultCard.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/inspect', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                showResult(data);
+            } catch (err) {
+                alert('Error connecting to server. Make sure the backend is running.');
+            } finally {
+                inspectBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function showResult(data) {
+            const isDefective = data.label === 'DEFECTIVE';
+            const badge = document.getElementById('result-badge');
+            const scoreText = document.getElementById('result-score');
+            const scoreFill = document.getElementById('score-fill');
+            const scoreValue = document.getElementById('score-value');
+            const thresholdLine = document.getElementById('threshold-line');
+            const thresholdLabel = document.getElementById('threshold-label');
+            const heatmapImg = document.getElementById('heatmap-img');
+
+            badge.textContent = data.label;
+            badge.className = 'result-badge ' + (isDefective ? 'badge-defective' : 'badge-good');
+            scoreText.textContent = `Anomaly score: ${(data.score * 100).toFixed(1)}%`;
+            scoreValue.textContent = `${(data.score * 100).toFixed(1)}%`;
+
+            scoreFill.style.width = `${data.score * 100}%`;
+            scoreFill.className = 'score-fill ' + (isDefective ? 'fill-defective' : 'fill-good');
+
+            const thresholdPct = 37.31;
+            thresholdLine.style.left = `${thresholdPct}%`;
+            thresholdLabel.style.left = `${thresholdPct}%`;
+
+            heatmapImg.src = `data:image/png;base64,${data.heatmap}`;
+            resultCard.style.display = 'block';
+            document.getElementById('reset-btn').style.display = 'block';
+            inspectBtn.style.display = 'none';
+        }
+
+        function reset() {
+            selectedFile = null;
+            previewContainer.style.display = 'none';
+            inspectBtn.style.display = 'block';
+            document.getElementById('reset-btn').style.display = 'none';
+            resultCard.style.display = 'none';
+            uploadArea.style.display = 'block';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>
